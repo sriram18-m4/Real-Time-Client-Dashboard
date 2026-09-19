@@ -63,7 +63,9 @@ export const Navbar: React.FC = () => {
           </span>
         </div>
       </div>
-
+      
+      {/* Actions */}
+      <div className="flex items-center gap-3">
         {/* Notification Bell */}
         <NotificationDropdown />
 
