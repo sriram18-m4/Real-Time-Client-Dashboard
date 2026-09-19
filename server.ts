@@ -1,7 +1,6 @@
 import http from 'http';
 import path from 'path';
 import express from 'express';
-import { createServer as createViteServer } from 'vite';
 import { createApp } from './backend/src/app.js';
 import { socketManager } from './backend/src/socket/socketServer.js';
 import { overdueCronService } from './backend/src/services/overdueCron.service.js';
@@ -9,7 +8,7 @@ import { logger } from './backend/src/logger/logger.js';
 import { memoryDb } from './backend/src/db/memoryStore.js';
 import { initDatabaseConnection } from './backend/src/db/prisma.js';
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 async function startServer() {
   try {
@@ -31,6 +30,8 @@ async function startServer() {
 
     // 5. Mount Vite middleware in development or serve static files in production
     if (process.env.NODE_ENV !== 'production') {
+      // Loaded lazily so production never imports vite (and its native rolldown binding)
+      const { createServer: createViteServer } = await import('vite');
       const vite = await createViteServer({
         server: { middlewareMode: true },
         appType: 'spa',
@@ -46,7 +47,7 @@ async function startServer() {
       logger.info('Static production build serving enabled');
     }
 
-    // 6. Listen on Port 3000 and 0.0.0.0
+    // 6. Listen on the host-provided port (falls back to 3000) and 0.0.0.0
     httpServer.listen(PORT, '0.0.0.0', () => {
       logger.info(`Server successfully listening on http://0.0.0.0:${PORT}`);
     });
