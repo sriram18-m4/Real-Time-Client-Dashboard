@@ -13,6 +13,7 @@
     "test": "NODE_ENV=test vitest run",
     "prisma:generate": "prisma generate --schema=backend/prisma/schema.prisma",
     "prisma:seed": "tsx backend/prisma/seed.ts"
+    "vercel-build": "prisma generate --schema=backend/prisma/schema.prisma && vite build"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
