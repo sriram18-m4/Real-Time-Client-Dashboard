@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth, QUICK_ACCOUNTS } from '../context/AuthContext';
-import { Activity, ShieldCheck, Lock, Mail, ArrowRight, UserCheck } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Activity, ShieldCheck, Lock, Mail, ArrowRight } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
-  const { user, login, quickLogin, isLoading } = useAuth();
+  const { user, login, isLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -32,18 +32,6 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleQuickLogin = async (key: keyof typeof QUICK_ACCOUNTS) => {
-    setError(null);
-    setIsSubmitting(true);
-    try {
-      await quickLogin(key);
-    } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Failed to switch user');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-4 py-12 text-slate-100">
       <div className="w-full max-w-md space-y-8">
@@ -56,41 +44,6 @@ export const LoginPage: React.FC = () => {
           <p className="mt-1 text-sm text-slate-400">
             Real-time project operations with RBAC & live activity
           </p>
-        </div>
-
-        {/* Quick 1-Click Role Switcher for Hiring Evaluators */}
-        <div className="rounded-2xl border border-indigo-500/30 bg-indigo-950/20 p-4 shadow-xl backdrop-blur">
-          <div className="flex items-center gap-2 mb-2 text-indigo-400">
-            <UserCheck className="h-4 w-4" />
-            <h3 className="text-xs font-semibold uppercase tracking-wider">
-              Quick Role Switcher (Seeded Credentials)
-            </h3>
-          </div>
-          <p className="text-xs text-slate-400 mb-3">
-            Click any account to authenticate instantly:
-          </p>
-          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-            {(Object.keys(QUICK_ACCOUNTS) as Array<keyof typeof QUICK_ACCOUNTS>).map((key) => {
-              const acc = QUICK_ACCOUNTS[key];
-              return (
-                <button
-                  key={key}
-                  id={`btn-quick-login-${key.toLowerCase()}`}
-                  onClick={() => handleQuickLogin(key)}
-                  disabled={isSubmitting}
-                  className="flex flex-col items-start rounded-xl border border-slate-800 bg-slate-900/90 p-2.5 text-left hover:border-indigo-500 hover:bg-slate-800/80 transition-all disabled:opacity-50"
-                >
-                  <div className="flex w-full items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-200 truncate">{acc.name}</span>
-                    <span className="text-[9px] font-mono px-1 rounded bg-indigo-500/20 text-indigo-300 uppercase">
-                      {acc.role.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-slate-500 font-mono mt-0.5">{acc.email}</span>
-                </button>
-              );
-            })}
-          </div>
         </div>
 
         {/* Standard Manual Login Card */}
