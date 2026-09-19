@@ -1,8 +1,8 @@
 import React from 'react';
-import { useAuth, QUICK_ACCOUNTS } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import { NotificationDropdown } from './NotificationDropdown';
-import { Activity, LogOut, Radio, UserCheck, ChevronDown } from 'lucide-react';
+import { Activity, LogOut, Radio } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
