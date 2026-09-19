@@ -5,9 +5,8 @@ import { NotificationDropdown } from './NotificationDropdown';
 import { Activity, LogOut, Radio, UserCheck, ChevronDown } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
-  const { user, logout, quickLogin } = useAuth();
+  const { user, logout } = useAuth();
   const { isConnected, onlineUserIds } = useSocket();
-  const [isSwitcherOpen, setIsSwitcherOpen] = React.useState(false);
 
   const getRoleBadgeColor = (role?: string) => {
     switch (role) {
@@ -64,55 +63,6 @@ export const Navbar: React.FC = () => {
           </span>
         </div>
       </div>
-
-      {/* Actions & Role Switcher for Hiring Evaluators */}
-      <div className="flex items-center gap-3">
-        {/* Evaluator Quick Role Switcher */}
-        <div className="relative">
-          <button
-            id="btn-evaluator-role-switcher"
-            onClick={() => setIsSwitcherOpen(!isSwitcherOpen)}
-            className="flex items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-1.5 text-xs font-medium text-indigo-300 hover:bg-indigo-500/20 transition-colors"
-            title="Switch roles instantly to test RBAC"
-          >
-            <UserCheck className="h-3.5 w-3.5 text-indigo-400" />
-            <span className="hidden sm:inline">Role Switcher</span>
-            <ChevronDown className="h-3 w-3 opacity-70" />
-          </button>
-
-          {isSwitcherOpen && (
-            <div className="absolute right-0 mt-2 w-64 rounded-xl border border-slate-800 bg-slate-900 shadow-xl p-2 z-50">
-              <div className="px-2 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                Test RBAC Access
-              </div>
-              <div className="space-y-1 mt-1">
-                {(Object.keys(QUICK_ACCOUNTS) as Array<keyof typeof QUICK_ACCOUNTS>).map((key) => {
-                  const acc = QUICK_ACCOUNTS[key];
-                  const isCurrent = user?.email === acc.email;
-                  return (
-                    <button
-                      key={key}
-                      onClick={async () => {
-                        setIsSwitcherOpen(false);
-                        await quickLogin(key);
-                      }}
-                      className={`w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs text-left transition-colors ${
-                        isCurrent
-                          ? 'bg-indigo-600/20 text-indigo-300 font-semibold'
-                          : 'text-slate-300 hover:bg-slate-800'
-                      }`}
-                    >
-                      <span className="truncate">{acc.name}</span>
-                      <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
-                        {acc.role.replace('_', ' ')}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
 
         {/* Notification Bell */}
         <NotificationDropdown />
