@@ -7,20 +7,11 @@ interface AuthContextType {
   accessToken: string | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  quickLogin: (account: 'ADMIN' | 'PM1' | 'PM2' | 'DEV1' | 'DEV2') => Promise<void>;
   logout: () => Promise<void>;
   hasRole: (...roles: Role[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const QUICK_ACCOUNTS = {
-  ADMIN: { email: 'admin@agency.com', password: 'Password123!', name: 'Alexandra Vance', role: 'ADMIN' as Role },
-  PM1: { email: 'pm1@agency.com', password: 'Password123!', name: 'Marcus Chen', role: 'PROJECT_MANAGER' as Role },
-  PM2: { email: 'pm2@agency.com', password: 'Password123!', name: 'Sarah Jenkins', role: 'PROJECT_MANAGER' as Role },
-  DEV1: { email: 'dev1@agency.com', password: 'Password123!', name: 'Ravi Patel', role: 'DEVELOPER' as Role },
-  DEV2: { email: 'dev2@agency.com', password: 'Password123!', name: 'Elena Rostova', role: 'DEVELOPER' as Role },
-};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -111,11 +102,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     handleAuthSuccess(res.data.user, res.data.accessToken);
   };
 
-  const quickLogin = async (account: 'ADMIN' | 'PM1' | 'PM2' | 'DEV1' | 'DEV2') => {
-    const creds = QUICK_ACCOUNTS[account];
-    await login(creds.email, creds.password);
-  };
-
   const logout = async () => {
     clearRefreshTimer();
     try {
@@ -141,7 +127,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         accessToken: token || getAccessToken(),
         isLoading,
         login,
-        quickLogin,
         logout,
         hasRole,
       }}
