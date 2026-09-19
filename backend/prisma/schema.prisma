@@ -1,0 +1,201 @@
+// Prisma Schema for Real-Time Client Project Dashboard
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  PROJECT_MANAGER
+  DEVELOPER
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ActivityType {
+  STATUS_CHANGED
+  ASSIGNED
+  CREATED
+  OVERDUE_FLAGGED
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_IN_REVIEW
+  TASK_OVERDUE
+  PROJECT_CREATED
+}
+
+model User {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  name         String
+  passwordHash String         @map("password_hash")
+  role         Role           @default(DEVELOPER)
+  isActive     Boolean        @default(true) @map("is_active")
+  lastSeenAt   DateTime       @default(now()) @map("last_seen_at")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  createdProjects Project[]      @relation("ProjectCreator")
+  assignedTasks   Task[]         @relation("TaskAssignee")
+  activities      TaskActivity[] @relation("ActivityActor")
+  notifications   Notification[]
+  refreshTokens   RefreshToken[]
+
+  @@index([role, isActive], name: "idx_users_role_active")
+  @@map("users")
+}
+
+model Client {
+  id        String    @id @default(uuid())
+  name      String
+  email     String    @unique
+  company   String
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  projects  Project[]
+
+  @@map("clients")
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  clientId    String   @map("client_id")
+  createdById String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  client      Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  creator     User           @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  tasks       Task[]
+  activities  TaskActivity[]
+
+  // Indexes:
+  // 1. created_by index: Fast filtering for Project Managers who can only view their own projects (created_by = current_user_id).
+  // 2. client_id index: Fast lookup of all projects belonging to a client.
+  @@index([createdById], name: "idx_projects_created_by")
+  @@index([clientId], name: "idx_projects_client_id")
+  @@map("projects")
+}
+
+model Task {
+  id          Int          @id @default(autoincrement())
+  projectId   String       @map("project_id")
+  assigneeId  String?      @map("assignee_id")
+  title       String
+  description String?
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  dueDate     DateTime     @map("due_date")
+  isOverdue   Boolean      @default(false) @map("is_overdue")
+  overdueAt   DateTime?    @map("overdue_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee    User?          @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  activities  TaskActivity[]
+  notifications Notification[]
+
+  // Indexes:
+  // 1. (assignee_id, status): Optimizes Developer dashboard and "My Tasks" query filtering assigned tasks by status.
+  // 2. (project_id, status): Optimizes Project detail task boards and status breakdown counts.
+  // 3. (is_overdue, due_date, status): Optimizes the 5-minute background cron job checking tasks past due date not done.
+  // 4. (project_id, priority): Optimizes PM dashboard priority distributions.
+  @@index([assigneeId, status], name: "idx_tasks_assignee_status")
+  @@index([projectId, status], name: "idx_tasks_project_status")
+  @@index([isOverdue, dueDate, status], name: "idx_tasks_overdue_scan")
+  @@index([projectId, priority], name: "idx_tasks_project_priority")
+  @@map("tasks")
+}
+
+model TaskActivity {
+  id         String       @id @default(uuid())
+  taskId     Int          @map("task_id")
+  projectId  String       @map("project_id") // Denormalized so project-level activity queries do not require a JOIN on tasks
+  actorId    String?      @map("actor_id")  // Nullable for system events like automated overdue flags
+  type       ActivityType
+  fromStatus TaskStatus?  @map("from_status")
+  toStatus   TaskStatus?  @map("to_status")
+  message    String?
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  // Relations
+  task       Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  project    Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actor      User?        @relation("ActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  // Indexes:
+  // 1. (project_id, created_at DESC): Optimizes project-level feed and PM activity stream without join.
+  // 2. (task_id, created_at DESC): Optimizes task audit history modal.
+  // 3. (created_at DESC): Optimizes global Admin feed pagination.
+  @@index([projectId, createdAt(sort: Desc)], name: "idx_task_activity_project_created")
+  @@index([taskId, createdAt(sort: Desc)], name: "idx_task_activity_task_created")
+  @@index([createdAt(sort: Desc)], name: "idx_task_activity_created")
+  @@map("task_activities")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  taskId    Int?             @map("task_id")
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  // Relations
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task      Task?            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  // Indexes:
+  // 1. (user_id, is_read, created_at DESC): Optimizes unread notification count badge and recent notification dropdown.
+  @@index([userId, isRead, createdAt(sort: Desc)], name: "idx_notifications_user_read_created")
+  @@map("notifications")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  isRevoked Boolean  @default(false) @map("is_revoked")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Indexes:
+  // 1. token_hash: Unique index provides O(1) lookup during refresh token exchange.
+  // 2. (user_id, is_revoked): Optimizes token revocation during logout and session invalidation.
+  @@index([userId, isRevoked], name: "idx_refresh_tokens_user_revoked")
+  @@map("refresh_tokens")
+}
